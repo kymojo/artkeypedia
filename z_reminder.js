@@ -160,3 +160,23 @@ function validatePerson(person)
     };
     return Joi.validate(person, schema);
 }
+
+// ################################################
+// Calling REST
+
+// const request = new XMLHttpRequest();
+// request.open('GET','http://localhost:3000/sql', true);
+// request.onload = function() {
+//   
+//     const data = this.response; // JSON.parse(this.response);
+//     // if (request.status >= 200 && request.status < 400)
+//     // {
+//     alert(data);
+//     // }
+//     // else
+//     // {
+//     //     alert('I am error');
+//     // }
+// }
+// 
+// request.send();

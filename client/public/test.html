@@ -1,0 +1,22 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="style/default.css"/>
+    </head>
+    <body>
+
+        <!--##########################################-->
+        <div id="header">
+            <div style="font-weight:bold;">
+                Keycap Nation
+            </div>
+            <div>
+                <search-bar :autofill="autofillResults" @get-autofill="getAutoFill" @search="search"/>
+            </div>
+            <div style="text-align:right;position:relative;">
+                <login-popup :current-user="username" @log-in="logIn"/>
+            </div>
+        </div>
+        <!--##########################################-->
+        <script src="js/test.js"></script>
+    </body>
+</html>
