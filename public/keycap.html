@@ -1,0 +1,118 @@
+<html>
+    <head>
+        <link rel="stylesheet" href="style/default.css"/>
+        <script src="script/vue.js"></script>
+    </head>
+    <body>
+        <!--##########################################-->
+        <div id="header">
+            <div style="font-weight:bold;">
+                Keycap Nation
+            </div>
+            <div>
+                <input type="text" placeholder="Search"/>
+                <input type="button" value="Go"/>
+            </div>
+            <div style="text-align:right;">
+                <input type="button" value="Login"/>
+            </div>
+        </div>
+        <!--##########################################-->
+        <div id="content">
+            <div class="section" style="padding:.5em;" id="cap-view-section">
+            
+                <!-- Section Header -->
+                <div style="display:flex;margin-bottom:1em;">
+
+                    <!-- Header Image -->
+                    <div style="text-align:center;">
+                        <image style="width:128px;height:128px;border:1px solid black;" :src="imageURL"/>
+                        <br/>
+                        <!-- Image Text -->
+                        <i>Some text</i>
+                    </div>
+
+                    <!-- Header Data -->
+                    <div style="display:flex;flex-grow:1;">
+                        <!-- Cap Name -->
+                        <div style="flex-grow:1;">
+                            <span style="font-weight:bold;">{{keycap.name}}</span>
+                            <span>by</span>
+                            <a href="#">{{keycap.maker}}</a>
+                        </div>
+                        <!-- Edit Button -->
+                        <div style="">
+                            <input type="button" value="Edit"/>
+                        </div>
+                    </div>
+
+                </div>
+                <!-- end Section Header -->
+
+                <!-- Section Tabs -->
+                <div style="display:flex;flex-grow:1;padding-bottom:.5em;margin-bottom:.5em;border-bottom:solid 1px black;">
+                    <div style="padding: 0 .5em;"><a href="#">Overview</a></div>
+                    <div style="padding: 0 .5em;"><a href="#">Styles</a></div>
+                    <div style="padding: 0 .5em;"><a href="#">Sale History</a></div>
+                    <div style="padding: 0 .5em;"><a href="#">Community</a></div>
+                    <div style="padding: 0 .5em;"><a href="#">Related</a></div>
+                </div>
+
+                <!-- Section Body -->
+                <div style="display:flex;flex-grow:1;border:1px solid black;">
+                
+                asdf
+                </div>
+            
+            </div>
+        </div>
+        <!--##########################################-->
+        <script type="text/javascript">
+
+            Vue.component('text-field', {
+                props: [
+                    'editEnabled'
+                ],
+                data: function() {
+                    return {
+                        value: "Some Default",
+                        editing: false
+                    }
+                },
+                template: 
+                    `<input type="text" v-if="editEnabled" placeholder="Text..." :value="value"/>
+                    <span v-else>{{value}}</span>`
+            });
+
+            // ------------------------------------
+
+            new Vue({
+                el: '#cap-view-section',
+                component: [
+                    'edit-button',
+                    'text-field'
+                ],
+                data: {
+                    // --
+                    editMode: false,
+                    // --
+                    keycap: {
+                        name: 'No Name',
+                        maker: 'Unknown',
+                        image: 'jellykey_sphinctercell_don.jpg',
+                        desc: 'Describe it!',
+                        tags: ['A','B','C']
+                    }
+                },
+                computed: {
+                    imageURL: function() {
+                        return 'image/' + this.keycap.image;
+                    }
+                }
+            });
+        
+
+
+        </script>
+    </body>
+</html>
