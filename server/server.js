@@ -6,6 +6,7 @@ const path = require('path');
 const express = require('express');
 const Joi = require('joi');
 const mysql = require('mysql');
+const history = require('connect-history-api-fallback-exclusions');
 
 // =========================================
 // Set up express app
@@ -14,6 +15,11 @@ const mysql = require('mysql');
 // Set express app
 const app = express();
 app.use(express.json()); // allow JSON parsing
+app.use(history({
+    exclusions: [
+        '/api/*'
+    ]
+}));
 
 // Set port using PORT environment variable
 // (eg. using command: set PORT=1337)
@@ -29,7 +35,7 @@ app.use(express.static(path.join(__dirname, '../client/public')));
 
 // =========================================
 
-app.get('/sql',(req,res) => {
+app.get('/api/test',(req,res) => {
 
     const con = mysql.createConnection({
         host: 'localhost',

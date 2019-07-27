@@ -1,4 +1,35 @@
-Vue.component('search-bar', {
+<!--####################################################-->
+<style>
+
+#search-bar { display:flex; }
+
+#text-input { flex-grow:1; position:relative; }
+#type-in { width:100%; }
+#results { background-color:white;position:absolute;width:calc(100% - 2px);border:1px solid grey; }
+.result-line { margin:.25em;border-bottom:1px solid grey; }
+
+#go-button { margin-left:.25em; }
+
+</style>
+<!--####################################################-->
+<template>
+
+<div id="search-bar">
+    <div id="text-input">
+        <input id="type-in" type="text" placeholder="Search" v-model="searchText" @keydown="event_getAutofill"/>
+        <div id="results" v-show="hasResults">
+            <div class="result-line" v-for="option in autofill" :key="option">{{option}}</div>
+        </div>
+    </div>
+    <input id="go-button" type="button" value="Go" @click="event_search"/>
+</div>
+
+</template>
+<!--####################################################-->
+<script>
+
+export default {
+    name: 'search-bar',
     props: [
         'autofill',
         'delay'
@@ -36,14 +67,8 @@ Vue.component('search-bar', {
             return (this.autofill.length > 0);
         }
     },
-    template: 
-        `<div style="display:flex;">
-            <div style="flex-grow:1;position:relative;">
-                <input type="text" style="width:100%;" placeholder="Search" v-model="searchText" @keydown="event_getAutofill"/>
-                <div v-show="hasResults" style="background-color:white;position:absolute;width:calc(100% - 2px);border:1px solid grey;">
-                    <div v-for="option in autofill" style="margin:.25em;border-bottom:1px solid grey;">{{option}}</div>
-                </div>
-            </div>
-            <input type="button" style="margin-left:.25em;" value="Go" @click="event_search"/>
-        </div>`
-});
+}
+
+</script>
+<!--####################################################-->
+

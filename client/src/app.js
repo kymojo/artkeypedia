@@ -1,13 +1,19 @@
 import Vue from 'vue';
 import VueRouter from 'vue-router';
-import App from './App.vue';
-import Foo from './Foo.vue';
+import Index from './page/Index.vue';
+import Foo from './page/Foo.vue';
+import Cap from './page/Cap.vue';
+
+const pageURL = 'http://localhost:3000';
 
 const routes = [
-  { path: '/',      redirect: '/index'},
-  { path: '/index', component: App},
-  { path: '/foo',   component: Foo},
-  { path: '*',      redirect: '/index' },
+  { path: '/index', redirect: '/'       },
+  { path: '/',      component: Index    },
+  { path: '/foo',   component: Foo      },
+  { path: '/cap',   component: Cap      },
+  { path: '*',      redirect: '/'       },
+  { path: '*/*',    redirect: '/'       },
+  { path: '*/*/*',  redirect: '/'       },
 ];
 
 Vue.use(VueRouter);
