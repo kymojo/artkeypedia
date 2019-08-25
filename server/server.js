@@ -117,35 +117,49 @@ app.get('/api/artist/:pk', (req, res) => {
     if (validatePk(pk).error)
         return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid syntax!');
 
-    const con = dbHelper.getDbConnection();
-    const sql = `
-        SELECT
-            a.ArtistPk,
-            a.ArtistId,
-            a.ArtistName, 
-            a.ArtistWebsite,
-            a.ArtistInstagram,
-            a.ArtistReddit,
-            a.ArtistGeekhack,
-            i.ImagePk,
-            i.ImageURL
-        FROM caps.a_artist a
-        JOIN caps.a_image i
-            ON a.ImagePk = i.ImagePk
-        WHERE a.ArtistPk = ${pk}
-    `;
-    con.query(sql, (err, rows, fields) => {
+        console.log(`Attempting to GET artist with Pk ${pk}...`);
+        console.log();
+    
+        const queries = [];
+    
+        queries.push(dbHelper.newQuery(`
+            SELECT
+                a.ArtistPk,
+                a.ArtistId,
+                a.ArtistName, 
+                a.ArtistWebsite,
+                a.ArtistInstagram,
+                a.ArtistReddit,
+                a.ArtistGeekhack,
+                i.ImagePk,
+                i.ImageURL
+            FROM caps.a_artist a
+            LEFT JOIN caps.a_image i
+                ON a.ImagePk = i.ImagePk
+            WHERE a.ArtistPk = @pk;
+        `, {pk: pk}));
+    
+        console.log('Queries:');
+        console.log(queries);
+        console.log();
+    
+        dbHelper.queryDatabase(queries, true,
+            (result) => {
+                console.log('Results:');
+                console.log(result);
+                console.log();
+                
+                const rows = result ? result[0] : [];
 
-        if (err) {
-            console.log(err.message);
-            return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
-        }
-
-        if (rows.length == 0)
-            return sendStatus(res, ApiCode.NOT_FOUND, `Could not find a maker with PK = ${pk}`);
-
-        res.send(rows);
-    });
+                if (rows.length == 0)
+                    return sendStatus(res, ApiCode.NOT_FOUND, `Could not find a maker with Pk ${pk}`);
+        
+                res.send(rows);
+            },
+            (err) => {
+                console.log(err.message);
+                return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
+            });
 });
 
 app.post('/api/artist/', (req, res) => {
@@ -153,7 +167,9 @@ app.post('/api/artist/', (req, res) => {
     const artist = req.body;
     if (validateArtist(artist).error) return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
 
+    console.log("Attempting to POST artist...");
     console.log(artist);
+    console.log();
 
     const queries = [];
 
@@ -163,32 +179,39 @@ app.post('/api/artist/', (req, res) => {
             ArtistInstagram, ArtistReddit,
             ArtistGeekhack)
         VALUES (
-            :id, :name, :website,
-            :insta, :reddit,
-            :geekhack
+            @id, @name, @website,
+            @insta, @reddit,
+            @geekhack
         );
     `, {
-        id: artist.ArtistId,
-        name: artist.ArtistName,
-        website: artist.ArtistWebsite,
-        insta: artist.ArtistInstagram,
-        reddit: artist.ArtistReddit,
-        geekhack: artist.ArtistGeekhack
-    }));
+            id: artist.ArtistId,
+            name: artist.ArtistName,
+            website: artist.ArtistWebsite,
+            insta: artist.ArtistInstagram,
+            reddit: artist.ArtistReddit,
+            geekhack: artist.ArtistGeekhack
+        }));
 
     if (artist.ImageUrl) {
 
         queries.push(dbHelper.newQuery(`
             INSERT INTO caps.a_image (ImageURL)
-            VALUES (:url);
-        `,{ url: artist.ImageURL }));
+            VALUES (@url);
+        `, { url: artist.ImageURL }));
     }
 
+    console.log('Queries:');
     console.log(queries);
+    console.log();
 
-    dbHelper.queryDatabase(queries, true, (result) => {
-        res.send(result);
-    },
+    dbHelper.queryDatabase(queries, true,
+        (result) => {
+            console.log('Results:');
+            console.log(result);
+            console.log();
+            
+            res.send(!result ? result : {postPk: result[0].insertId});
+        },
         (err) => {
             console.log(err.message);
             return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');

@@ -14,25 +14,17 @@ const dbHelper = {
             database: 'caps'
         });
 
-        this.addCustomQueryFormatConfig(connection);
-
-        return connection;
-    },
-
-    /**
-     * Add a custom query format to the connection so that ":arg" params will be replaced.
-     * @param {Object} connection - current database connection object 
-     */
-    addCustomQueryFormatConfig: function(connection) {
         connection.config.queryFormat = function (query, values) {
             if (!values) return query;
-            return query.replace(/\:(\w+)/g, function (txt, key) {
+            return query.replace(/@(\w+)/g, function (txt, key) {
                 if (values.hasOwnProperty(key)) {
                     return this.escape(values[key]);
                 }
                 return txt;
             }.bind(this));
         };
+
+        return connection;
     },
 
     /** Create a new query object
@@ -50,10 +42,6 @@ const dbHelper = {
      * @param {function} onFailure - function to use if query fails : (Object err)
     */
     queryDatabase: function (queries, useTransaction, onSuccess, onFailure) {
-
-        console.log('--------------------------------------------');
-        console.log('queryDatabase, queries: ' + queries);
-
         const connection = this.setConnection();
         try {
             if (useTransaction)
@@ -87,10 +75,6 @@ const dbHelper = {
      * @param {function} onSuccess - function to use if query succeeds : (Object[] results)
      */
     dbTransactionBegin: function (connection, queries, onSuccess) {
-
-        console.log('--------------------------------------------');
-        console.log('dbTransactionBegin, queries: ' + queries);
-
         connection.beginTransaction((err) => {
             if (err) { throw err; }
             this.dbQueries(connection, queries, true, onSuccess);
@@ -105,10 +89,6 @@ const dbHelper = {
      * @param {Object[]} queryResults - results of previous queries in this recursive query run
      */
     dbQueries: function (connection, queries, useTransaction, onSuccess, queryResults) {
-
-        console.log('--------------------------------------------');
-        console.log('dbQueries, queries: ' + queries);
-
         if (!queryResults) queryResults = [];
 
         // Get query (as string or array of strings)
@@ -116,7 +96,7 @@ const dbHelper = {
         const query = (isArray ? queries[0] : queries);
         const nextQueries = (isArray ? queries.slice(1) : null);
 
-        connection.query(query['query'], query['params'], (err, result) => {
+        connection.query(query.query, query.params, (err, result) => {
             // On error, rollback and/or throw error
             if (err) {
                 if (useTransaction) connection.rollback(() => { throw err; });

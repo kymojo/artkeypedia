@@ -92,7 +92,9 @@ export default {
                 this.updateObjectFromFields();
                 delete this.artist['ArtistPk'];
                 Api.callApiPost(`artist/`,this.artist,(req)=>{
-                    console.log(req.response);
+                    const result = JSON.parse(req.response);
+                    const newPk = result.postPk;
+                    window.location.href = document.location.origin + '/interface/artist/' + newPk;
                 });
             }
         },
