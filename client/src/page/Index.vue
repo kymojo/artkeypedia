@@ -3,14 +3,14 @@
 <style>
 
 body {
-    margin: 0; padding: .5em; padding-top: 5.5em;
+    margin: 0; padding: .5em;
     font-family: Arial,Helvetica Neue,Helvetica,sans-serif;
 }
 
 </style>
 <!--####################################################-->
 <template>
-  <div id="index">
+  <div id="index" style="padding-top:5.5em;">
     <page-header></page-header>
     <div style="margin-left:auto;margin-right:auto;width:70%;min-width:32em;display:flex;text-align:center;">
       <div style="flex-grow:1">

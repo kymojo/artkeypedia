@@ -6,6 +6,8 @@ const path = require('path');
 const express = require('express');
 const history = require('connect-history-api-fallback-exclusions');
 
+const dbHelper = require('./dbHelper.js');
+
 // =========================================
 // Set up express app
 // -----------------------------------------
@@ -36,7 +38,6 @@ app.use(express.static(path.join(__dirname, '../client/public')));
 // API
 // -----------------------------------------
 const Joi = require('joi');
-const mysql = require('mysql');
 
 // -----------------------------------------
 // Define MySQL and custom Joi types (for convenience)
@@ -44,7 +45,7 @@ const mysql = require('mysql');
 const JoiMySQL = {
     INT: Joi.number().integer().max(2147483647).min(-2147483648),
     INT_UNSIGNED: Joi.number().integer().max(4294967295).min(0),
-}
+};
 
 const JoiCustom = {
     PK: JoiMySQL.INT,
@@ -58,12 +59,13 @@ const JoiCustom = {
 const ArtistTable = {
 
     schema: {
+        ArtistPk: /*        */ JoiCustom.PK,
         ArtistId: /*        */ JoiCustom.ID,
         ArtistName: /*      */ JoiCustom.Text,
-        ArtistWebsite: /*   */ JoiCustom.Text,
-        ArtistInstagram: /* */ JoiCustom.Text,
-        ArtistReddit: /*    */ JoiCustom.Text,
-        ArtistGeekhack: /*  */ JoiCustom.Text,
+        ArtistWebsite: /*   */ JoiCustom.Text.allow(null),
+        ArtistInstagram: /* */ JoiCustom.Text.allow(null),
+        ArtistReddit: /*    */ JoiCustom.Text.allow(null),
+        ArtistGeekhack: /*  */ JoiCustom.Text.allow(null),
         ImagePk: /*         */ JoiCustom.Text,
         ImageURL: /*        */ JoiCustom.Text
     }
@@ -88,18 +90,6 @@ function sendStatus(res, code, message) {
 }
 
 // -------------------------------------------
-// MySQL Helper Functions
-
-function getDbConnection() {
-    return mysql.createConnection({
-        host: 'localhost',
-        user: 'root',
-        password: 'password',
-        database: 'caps'
-    });
-}
-
-// -------------------------------------------
 // Validation Helper Functions
 
 function validateArtist(artist) {
@@ -112,18 +102,25 @@ function validatePk(pk) {
 }
 
 // -------------------------------------------
+
+function getParam(req, paramString) {
+    return req.params[paramString];
+}
+
+// -------------------------------------------
 // GET
 
 app.get('/api/artist/:pk', (req, res) => {
 
-    const pk = req.params.pk;
+    const pk = getParam(req, 'pk');
 
     if (validatePk(pk).error)
         return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid syntax!');
 
-    const con = getDbConnection();
+    const con = dbHelper.getDbConnection();
     const sql = `
         SELECT
+            a.ArtistPk,
             a.ArtistId,
             a.ArtistName, 
             a.ArtistWebsite,
@@ -156,7 +153,46 @@ app.post('/api/artist/', (req, res) => {
     const artist = req.body;
     if (validateArtist(artist).error) return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
 
-    // TODO: actually INSERT
+    console.log(artist);
+
+    const queries = [];
+
+    queries.push(dbHelper.newQuery(`
+        INSERT INTO caps.a_artist (
+            ArtistId, ArtistName, ArtistWebsite,
+            ArtistInstagram, ArtistReddit,
+            ArtistGeekhack)
+        VALUES (
+            :id, :name, :website,
+            :insta, :reddit,
+            :geekhack
+        );
+    `, {
+        id: artist.ArtistId,
+        name: artist.ArtistName,
+        website: artist.ArtistWebsite,
+        insta: artist.ArtistInstagram,
+        reddit: artist.ArtistReddit,
+        geekhack: artist.ArtistGeekhack
+    }));
+
+    if (artist.ImageUrl) {
+
+        queries.push(dbHelper.newQuery(`
+            INSERT INTO caps.a_image (ImageURL)
+            VALUES (:url);
+        `,{ url: artist.ImageURL }));
+    }
+
+    console.log(queries);
+
+    dbHelper.queryDatabase(queries, true, (result) => {
+        res.send(result);
+    },
+        (err) => {
+            console.log(err.message);
+            return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
+        });
 });
 
 app.put('/api/artist/', (req, res) => {
