@@ -5,6 +5,7 @@
 const path = require('path');
 const express = require('express');
 const history = require('connect-history-api-fallback-exclusions');
+const cors = require('cors');
 
 const dbHelper = require('./dbHelper.js');
 
@@ -21,6 +22,7 @@ app.use(history({
         '/image/*'
     ]
 }));
+app.use(cors()); // for file uploading
 
 // Set port using PORT environment variable
 // (eg. using command: set PORT=1337)
@@ -66,8 +68,8 @@ const ArtistTable = {
         ArtistInstagram: /* */ JoiCustom.Text.allow(null),
         ArtistReddit: /*    */ JoiCustom.Text.allow(null),
         ArtistGeekhack: /*  */ JoiCustom.Text.allow(null),
-        ImagePk: /*         */ JoiCustom.Text,
-        ImageURL: /*        */ JoiCustom.Text
+        ImagePk: /*         */ JoiCustom.Text.allow(null),
+        ImageURL: /*        */ JoiCustom.Text.allow(null)
     }
 
 };
@@ -82,6 +84,7 @@ const ApiCode = {
     NOT_FOUND: 404, // Resource not found
     NOT_ALLOW: 405, // API call not allowed
     CONFLICTS: 409, // Conflicted resource state (e.g. already exists)
+    NOPE_FILE: 422, // Unprocessable entity
     SRV_ERROR: 500, // Internal server error
 }
 
@@ -92,8 +95,12 @@ function sendStatus(res, code, message) {
 // -------------------------------------------
 // Validation Helper Functions
 
+function validateObject(obj, schema) {
+    return Joi.validate(obj, schema);
+}
+
 function validateArtist(artist) {
-    return Joi.validate(artist, ArtistTable.schema);
+    return validateObject(artist, ArtistTable.schema);
 }
 
 function validatePk(pk) {
@@ -114,15 +121,18 @@ app.get('/api/artist/:pk', (req, res) => {
 
     const pk = getParam(req, 'pk');
 
-    if (validatePk(pk).error)
-        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid syntax!');
+    console.log(`Attempting to GET artist with Pk ${pk}...`);
+    console.log();
 
-        console.log(`Attempting to GET artist with Pk ${pk}...`);
+    if (validatePk(pk).error) {
+        console.log('Invalid GET param.');
         console.log();
-    
-        const queries = [];
-    
-        queries.push(dbHelper.newQuery(`
+        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid syntax!');
+    }
+
+    const queries = [];
+
+    queries.push(dbHelper.newQuery(`
             SELECT
                 a.ArtistPk,
                 a.ArtistId,
@@ -137,39 +147,48 @@ app.get('/api/artist/:pk', (req, res) => {
             LEFT JOIN caps.a_image i
                 ON a.ImagePk = i.ImagePk
             WHERE a.ArtistPk = @pk;
-        `, {pk: pk}));
-    
-        console.log('Queries:');
-        console.log(queries);
-        console.log();
-    
-        dbHelper.queryDatabase(queries, true,
-            (result) => {
-                console.log('Results:');
-                console.log(result);
-                console.log();
-                
-                const rows = result ? result[0] : [];
+        `, { pk: pk }));
 
-                if (rows.length == 0)
-                    return sendStatus(res, ApiCode.NOT_FOUND, `Could not find a maker with Pk ${pk}`);
-        
-                res.send(rows);
-            },
-            (err) => {
-                console.log(err.message);
-                return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
-            });
+    console.log('Queries:');
+    console.log(queries);
+    console.log();
+
+    dbHelper.queryDatabase(queries, false,
+        (result) => {
+            console.log('Results:');
+            console.log(result);
+            console.log();
+
+            const rows = result ? result[0] : [];
+
+            if (rows.length == 0) {
+                console.log(`Could not find a maker with Pk ${pk}`);
+                console.log();
+                return sendStatus(res, ApiCode.NOT_FOUND, `Could not find artist record!`);
+            }
+
+            res.send(rows);
+        },
+        (err) => {
+            console.log(err.message);
+            console.log();
+            return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
+        });
 });
 
 app.post('/api/artist/', (req, res) => {
 
     const artist = req.body;
-    if (validateArtist(artist).error) return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
 
     console.log("Attempting to POST artist...");
     console.log(artist);
     console.log();
+
+    if (validateArtist(artist).error) {
+        console.log('Artist object is invalid.');
+        console.log();
+        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
+    }
 
     const queries = [];
 
@@ -190,7 +209,8 @@ app.post('/api/artist/', (req, res) => {
             insta: artist.ArtistInstagram,
             reddit: artist.ArtistReddit,
             geekhack: artist.ArtistGeekhack
-        }));
+        }
+    ));
 
     if (artist.ImageUrl) {
 
@@ -209,11 +229,12 @@ app.post('/api/artist/', (req, res) => {
             console.log('Results:');
             console.log(result);
             console.log();
-            
-            res.send(!result ? result : {postPk: result[0].insertId});
+
+            res.send(!result ? result : { postPk: result[0].insertId });
         },
         (err) => {
             console.log(err.message);
+            console.log();
             return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
         });
 });
@@ -221,15 +242,169 @@ app.post('/api/artist/', (req, res) => {
 app.put('/api/artist/', (req, res) => {
 
     const artist = req.body;
-    if (validateArtist(artist).error) return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
 
-    // TODO: actually UPDATE
+    console.log(`Attempting to PUT artist with Pk ${artist.ArtistPk}...`);
+    console.log(artist);
+    console.log();
+
+    if (validateArtist(artist).error) {
+        console.log('Artist object is invalid.');
+        console.log();
+        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
+    }
+
+    const findQuery = dbHelper.newQuery(`
+        SELECT * FROM caps.a_artist
+        WHERE ArtistPk = @pk;
+    `, { pk: artist.ArtistPk });
+
+    const updateQuery = dbHelper.newQuery(`
+        UPDATE caps.a_artist
+        SET ArtistId = @id,
+            ArtistName = @name,
+            ArtistWebsite = @website,
+            ArtistInstagram = @insta,
+            ArtistReddit = @reddit,
+            ArtistGeekhack = @geekhack
+        WHERE ArtistPk = @pk;
+    `, {
+            pk: artist.ArtistPk,
+            id: artist.ArtistId,
+            name: artist.ArtistName,
+            website: artist.ArtistWebsite,
+            insta: artist.ArtistInstagram,
+            reddit: artist.ArtistReddit,
+            geekhack: artist.ArtistGeekhack
+        }
+    );
+
+    dbHelper.queryDatabase(findQuery, false,
+        (result) => {
+
+            console.log(`Search Results: `);
+            console.log(result);
+            console.log();
+
+            if (result[0].length > 0)
+                dbHelper.queryDatabase(updateQuery, false,
+                    (results) => {
+
+                        console.log(`Update Results: `);
+                        console.log(results);
+                        console.log();
+
+                        res.send('Successfully updated artist record!');
+
+                    }, (err) => {
+                        console.log(err.message);
+                        return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
+                    }
+                );
+            else {
+                console.log(`Could not locate artist with Pk ${artist.ArtistPk} for update...`);
+                console.log();
+
+                return sendStatus(res, ApiCode.NOT_FOUND, 'Could not find artist record!');
+            }
+        },
+        (err) => {
+            console.log(err.message);
+            console.log();
+            return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
+        });
 });
 
-app.delete('/api/artist/', (req, res) => {
+app.delete('/api/artist/:pk', (req, res) => {
 
-    const artist = req.body;
-    if (validateArtist(artist).error) return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
+    const pk = getParam(req, 'pk');
 
-    // TODO: actually DELETE
+    if (validatePk(pk).error)
+        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid syntax!');
+
+    console.log(`Attempting to DELETE artist with Pk ${pk}...`);
+    console.log();
+
+    const findQuery = dbHelper.newQuery(`
+        SELECT * FROM caps.a_artist
+        WHERE ArtistPk = @pk;
+    `, { pk: pk });
+
+    const updateQuery = dbHelper.newQuery(`
+        DELETE FROM caps.a_artist
+        WHERE ArtistPk = @pk;
+    `, { pk: pk });
+
+    dbHelper.queryDatabase(findQuery, false,
+        (result) => {
+
+            console.log(`Search Results: `);
+            console.log(result);
+            console.log();
+
+            if (result[0].length > 0)
+                dbHelper.queryDatabase(updateQuery, false,
+                    (results) => {
+
+                        console.log(`Delete Results: `);
+                        console.log(results);
+                        console.log();
+
+                        res.send('Successfully updated artist record!');
+
+                    }, (err) => {
+                        console.log(err.message);
+                        console.log();
+                        return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
+                    }
+                );
+            else {
+                console.log(`Could not locate artist with Pk ${artist.ArtistPk} for delete...`);
+                console.log();
+
+                return sendStatus(res, ApiCode.NOT_FOUND, 'Could not find artist record!');
+            }
+        },
+        (err) => {
+            console.log(err.message);
+            console.log();
+            return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
+        });
+});
+
+// -------------------------------------------
+// File upload
+
+// See https://blog.bitsrc.io/uploading-files-and-images-with-vue-and-express-2018ca0eecd0
+
+const multer = require('multer');
+
+app.use((err,req,res,next)=>{
+    if (err.code === "INCORRECT_FILETYPE") {
+        return sendStatus(res, ApiCode.NOPE_FILE,'Invalid file type');
+    }
+    if (err.code === "LIMIT_FILE_SIZE") {
+        return sendStatus(res, ApiCode.NOPE_FILE,'Invalid file size');
+    }
+});
+
+const fileFilter = (req,file,cb) => {
+    const allowedTypes = ['image/jpeg','image/jpg','image/png'];
+    if (!allowedTypes.includes(file.mimetype)) {
+        const error = new Error('Incorrect file');
+        error.code = "INCORRECT_FILETYPE";
+        return cb(error, false);
+    }
+    cb(null,true);
+};
+
+const upload = multer({
+    dest: path.join(__dirname, '../client/public/upload'),
+    fileFilter,
+    limits: {
+        fileSize: 500000 // 500KB
+    }
+});
+
+app.post('/upload', upload.single('file'), (req,res)=>{
+    res.json({file: req.file});
 });

@@ -32,6 +32,10 @@
         <input type="button" value="Cancel" @click="onCancelClick"/>
     </div>
 
+    <div class="container" style="margin-top:1em;padding:1em;">
+        <file-upload/>
+    </div>
+
 </div>
 
 </template>
@@ -40,12 +44,14 @@
 import Api from '../script/api-helper.js';
 import TextField from '../component/TextField';
 import LoadingAnimation from '../component/LoadingAnimation';
+import FileUpload from '../component/FileUpload';
 
 export default {
     name: 'interface-artist',
     components: {
         TextField,
-        LoadingAnimation
+        LoadingAnimation,
+        FileUpload
     },
     props: [],
     data: function() {
@@ -85,8 +91,11 @@ export default {
         },
         onSaveClick: function() {
             if (this.artist) {
-                alert('Call PUT!');
-                // this.updateObjectFromFields();
+                this.updateObjectFromFields();
+                Api.callApiPut(`artist/`,this.artist,(req)=>{
+                    console.log(req.response);
+                    window.location.reload();
+                });
             }
             else {
                 this.updateObjectFromFields();
