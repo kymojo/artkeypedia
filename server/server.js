@@ -58,16 +58,16 @@ const JoiCustom = {
 // ------------------------------------------
 // Define Tables
 
-const ArtistTable = {
+const MakerTable = {
 
     schema: {
-        ArtistPk: /*        */ JoiCustom.PK,
-        ArtistId: /*        */ JoiCustom.ID,
-        ArtistName: /*      */ JoiCustom.Text,
-        ArtistWebsite: /*   */ JoiCustom.Text.allow(null),
-        ArtistInstagram: /* */ JoiCustom.Text.allow(null),
-        ArtistReddit: /*    */ JoiCustom.Text.allow(null),
-        ArtistGeekhack: /*  */ JoiCustom.Text.allow(null),
+        MakerPk: /*        */ JoiCustom.PK,
+        MakerId: /*        */ JoiCustom.ID,
+        MakerName: /*      */ JoiCustom.Text,
+        MakerWebsite: /*   */ JoiCustom.Text.allow(null),
+        MakerInstagram: /* */ JoiCustom.Text.allow(null),
+        MakerReddit: /*    */ JoiCustom.Text.allow(null),
+        MakerGeekhack: /*  */ JoiCustom.Text.allow(null),
         ImagePk: /*         */ JoiCustom.Text.allow(null),
         ImageURL: /*        */ JoiCustom.Text.allow(null)
     }
@@ -99,8 +99,8 @@ function validateObject(obj, schema) {
     return Joi.validate(obj, schema);
 }
 
-function validateArtist(artist) {
-    return validateObject(artist, ArtistTable.schema);
+function validateMaker(maker) {
+    return validateObject(maker, MakerTable.schema);
 }
 
 function validatePk(pk) {
@@ -117,11 +117,11 @@ function getParam(req, paramString) {
 // -------------------------------------------
 // GET
 
-app.get('/api/artist/:pk', (req, res) => {
+app.get('/api/maker/:pk', (req, res) => {
 
     const pk = getParam(req, 'pk');
 
-    console.log(`Attempting to GET artist with Pk ${pk}...`);
+    console.log(`Attempting to GET maker with Pk ${pk}...`);
     console.log();
 
     if (validatePk(pk).error) {
@@ -134,19 +134,19 @@ app.get('/api/artist/:pk', (req, res) => {
 
     queries.push(dbHelper.newQuery(`
             SELECT
-                a.ArtistPk,
-                a.ArtistId,
-                a.ArtistName, 
-                a.ArtistWebsite,
-                a.ArtistInstagram,
-                a.ArtistReddit,
-                a.ArtistGeekhack,
+                a.MakerPk,
+                a.MakerId,
+                a.MakerName, 
+                a.MakerWebsite,
+                a.MakerInstagram,
+                a.MakerReddit,
+                a.MakerGeekhack,
                 i.ImagePk,
                 i.ImageURL
-            FROM caps.a_artist a
+            FROM caps.a_maker a
             LEFT JOIN caps.a_image i
                 ON a.ImagePk = i.ImagePk
-            WHERE a.ArtistPk = @pk;
+            WHERE a.MakerPk = @pk;
         `, { pk: pk }));
 
     console.log('Queries:');
@@ -164,7 +164,7 @@ app.get('/api/artist/:pk', (req, res) => {
             if (rows.length == 0) {
                 console.log(`Could not find a maker with Pk ${pk}`);
                 console.log();
-                return sendStatus(res, ApiCode.NOT_FOUND, `Could not find artist record!`);
+                return sendStatus(res, ApiCode.NOT_FOUND, `Could not find maker record!`);
             }
 
             res.send(rows);
@@ -176,16 +176,16 @@ app.get('/api/artist/:pk', (req, res) => {
         });
 });
 
-app.post('/api/artist/', (req, res) => {
+app.post('/api/maker/', (req, res) => {
 
-    const artist = req.body;
+    const maker = req.body;
 
-    console.log("Attempting to POST artist...");
-    console.log(artist);
+    console.log("Attempting to POST maker...");
+    console.log(maker);
     console.log();
 
-    if (validateArtist(artist).error) {
-        console.log('Artist object is invalid.');
+    if (validateMaker(maker).error) {
+        console.log('Maker object is invalid.');
         console.log();
         return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
     }
@@ -193,31 +193,31 @@ app.post('/api/artist/', (req, res) => {
     const queries = [];
 
     queries.push(dbHelper.newQuery(`
-        INSERT INTO caps.a_artist (
-            ArtistId, ArtistName, ArtistWebsite,
-            ArtistInstagram, ArtistReddit,
-            ArtistGeekhack)
+        INSERT INTO caps.a_maker (
+            MakerId, MakerName, MakerWebsite,
+            MakerInstagram, MakerReddit,
+            MakerGeekhack)
         VALUES (
             @id, @name, @website,
             @insta, @reddit,
             @geekhack
         );
     `, {
-            id: artist.ArtistId,
-            name: artist.ArtistName,
-            website: artist.ArtistWebsite,
-            insta: artist.ArtistInstagram,
-            reddit: artist.ArtistReddit,
-            geekhack: artist.ArtistGeekhack
+            id: maker.MakerId,
+            name: maker.MakerName,
+            website: maker.MakerWebsite,
+            insta: maker.MakerInstagram,
+            reddit: maker.MakerReddit,
+            geekhack: maker.MakerGeekhack
         }
     ));
 
-    if (artist.ImageUrl) {
+    if (maker.ImageUrl) {
 
         queries.push(dbHelper.newQuery(`
             INSERT INTO caps.a_image (ImageURL)
             VALUES (@url);
-        `, { url: artist.ImageURL }));
+        `, { url: maker.ImageURL }));
     }
 
     console.log('Queries:');
@@ -239,42 +239,42 @@ app.post('/api/artist/', (req, res) => {
         });
 });
 
-app.put('/api/artist/', (req, res) => {
+app.put('/api/maker/', (req, res) => {
 
-    const artist = req.body;
+    const maker = req.body;
 
-    console.log(`Attempting to PUT artist with Pk ${artist.ArtistPk}...`);
-    console.log(artist);
+    console.log(`Attempting to PUT maker with Pk ${maker.MakerPk}...`);
+    console.log(maker);
     console.log();
 
-    if (validateArtist(artist).error) {
-        console.log('Artist object is invalid.');
+    if (validateMaker(maker).error) {
+        console.log('Maker object is invalid.');
         console.log();
         return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
     }
 
     const findQuery = dbHelper.newQuery(`
-        SELECT * FROM caps.a_artist
-        WHERE ArtistPk = @pk;
-    `, { pk: artist.ArtistPk });
+        SELECT * FROM caps.a_maker
+        WHERE MakerPk = @pk;
+    `, { pk: maker.MakerPk });
 
     const updateQuery = dbHelper.newQuery(`
-        UPDATE caps.a_artist
-        SET ArtistId = @id,
-            ArtistName = @name,
-            ArtistWebsite = @website,
-            ArtistInstagram = @insta,
-            ArtistReddit = @reddit,
-            ArtistGeekhack = @geekhack
-        WHERE ArtistPk = @pk;
+        UPDATE caps.a_maker
+        SET MakerId = @id,
+            MakerName = @name,
+            MakerWebsite = @website,
+            MakerInstagram = @insta,
+            MakerReddit = @reddit,
+            MakerGeekhack = @geekhack
+        WHERE MakerPk = @pk;
     `, {
-            pk: artist.ArtistPk,
-            id: artist.ArtistId,
-            name: artist.ArtistName,
-            website: artist.ArtistWebsite,
-            insta: artist.ArtistInstagram,
-            reddit: artist.ArtistReddit,
-            geekhack: artist.ArtistGeekhack
+            pk: maker.MakerPk,
+            id: maker.MakerId,
+            name: maker.MakerName,
+            website: maker.MakerWebsite,
+            insta: maker.MakerInstagram,
+            reddit: maker.MakerReddit,
+            geekhack: maker.MakerGeekhack
         }
     );
 
@@ -293,7 +293,7 @@ app.put('/api/artist/', (req, res) => {
                         console.log(results);
                         console.log();
 
-                        res.send('Successfully updated artist record!');
+                        res.send('Successfully updated maker record!');
 
                     }, (err) => {
                         console.log(err.message);
@@ -301,10 +301,10 @@ app.put('/api/artist/', (req, res) => {
                     }
                 );
             else {
-                console.log(`Could not locate artist with Pk ${artist.ArtistPk} for update...`);
+                console.log(`Could not locate maker with Pk ${maker.MakerPk} for update...`);
                 console.log();
 
-                return sendStatus(res, ApiCode.NOT_FOUND, 'Could not find artist record!');
+                return sendStatus(res, ApiCode.NOT_FOUND, 'Could not find maker record!');
             }
         },
         (err) => {
@@ -314,24 +314,24 @@ app.put('/api/artist/', (req, res) => {
         });
 });
 
-app.delete('/api/artist/:pk', (req, res) => {
+app.delete('/api/maker/:pk', (req, res) => {
 
     const pk = getParam(req, 'pk');
 
     if (validatePk(pk).error)
         return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid syntax!');
 
-    console.log(`Attempting to DELETE artist with Pk ${pk}...`);
+    console.log(`Attempting to DELETE maker with Pk ${pk}...`);
     console.log();
 
     const findQuery = dbHelper.newQuery(`
-        SELECT * FROM caps.a_artist
-        WHERE ArtistPk = @pk;
+        SELECT * FROM caps.a_maker
+        WHERE MakerPk = @pk;
     `, { pk: pk });
 
     const updateQuery = dbHelper.newQuery(`
-        DELETE FROM caps.a_artist
-        WHERE ArtistPk = @pk;
+        DELETE FROM caps.a_maker
+        WHERE MakerPk = @pk;
     `, { pk: pk });
 
     dbHelper.queryDatabase(findQuery, false,
@@ -349,7 +349,7 @@ app.delete('/api/artist/:pk', (req, res) => {
                         console.log(results);
                         console.log();
 
-                        res.send('Successfully updated artist record!');
+                        res.send('Successfully updated maker record!');
 
                     }, (err) => {
                         console.log(err.message);
@@ -358,10 +358,10 @@ app.delete('/api/artist/:pk', (req, res) => {
                     }
                 );
             else {
-                console.log(`Could not locate artist with Pk ${artist.ArtistPk} for delete...`);
+                console.log(`Could not locate maker with Pk ${maker.MakerPk} for delete...`);
                 console.log();
 
-                return sendStatus(res, ApiCode.NOT_FOUND, 'Could not find artist record!');
+                return sendStatus(res, ApiCode.NOT_FOUND, 'Could not find maker record!');
             }
         },
         (err) => {

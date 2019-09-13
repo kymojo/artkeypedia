@@ -9,7 +9,7 @@
 
     <ul>
         <li><a href="interface/keycap">Keycap</a></li>
-        <li><a href="interface/artist">Artist</a></li>
+        <li><a href="interface/maker">Maker</a></li>
     </ul>
     
 </div>

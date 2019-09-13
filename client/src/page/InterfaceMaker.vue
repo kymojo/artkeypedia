@@ -9,11 +9,15 @@
 <!--####################################################-->
 <template>
 
-<div id="interface-artist">
+<div id="interface-maker">
     
     <div class="container" style="margin-bottom:1em;">
-        <h1 style="margin:0;">Mode: {{loading ? 'Loading...' : (artist ? 'Edit' : 'New')}} Artist</h1>
+        <h1 style="margin:0;">Mode: {{loading ? 'Loading...' : (maker ? 'Edit' : 'New')}} Maker</h1>
     </div>
+
+    <!-- 
+        Consider: https://rangle.io/blog/how-to-create-data-driven-user-interfaces-in-vue/
+    -->
 
     <div class="container" style="display:flex;flex-wrap:wrap;">
         <loading-animation v-if="loading" color="lightgrey"/>
@@ -47,7 +51,7 @@ import LoadingAnimation from '../component/LoadingAnimation';
 import FileUpload from '../component/FileUpload';
 
 export default {
-    name: 'interface-artist',
+    name: 'interface-maker',
     components: {
         TextField,
         LoadingAnimation,
@@ -57,66 +61,67 @@ export default {
     data: function() {
         return {
             loading: false,
-            artist: null,
+            maker: null,
             fields: this.defineFields(),
             editMode: true,
         };
     },
-    computed: {},
     created() {
-        if (this.$route.params.pk)
-        {
-            this.loadArtist(this.$route.params.pk);
+        // Load maker from db if PK != null
+        if (this.$route.params.pk) {
+            this.loadMaker(this.$route.params.pk);
         }
     },
     methods: {
-        loadArtist: function(pk) {
+        // ====== EVENTS ========================
+        loadMaker: function(pk) {
             this.loading = true;
-            Api.callApiGet(`artist/${pk}`,(req)=>{
+            Api.callApiGet(`maker/${pk}`,(req)=>{
                 const data = req.response;
-                this.artist = JSON.parse(data)[0];
+                this.maker = JSON.parse(data)[0];
                 this.loading = false;
-                this.onArtistLoad();
+                this.onMakerLoad();
             });
         },
-        onArtistLoad: function() {
+        onMakerLoad: function() {
             for(const index in this.fields) {
                 const field = this.fields[index];
-                const artistField = this.artist[field.name];
-                if (artistField) {
-                    field.value = artistField;
-                    field.savedValue = artistField;
+                const makerField = this.maker[field.name];
+                if (makerField) {
+                    field.value = makerField;
+                    field.savedValue = makerField;
                 }
             }
         },
         onSaveClick: function() {
-            if (this.artist) {
+            if (this.maker) {
                 this.updateObjectFromFields();
-                Api.callApiPut(`artist/`,this.artist,(req)=>{
+                Api.callApiPut(`maker/`,this.maker,(req)=>{
                     console.log(req.response);
                     window.location.reload();
                 });
             }
             else {
                 this.updateObjectFromFields();
-                delete this.artist['ArtistPk'];
-                Api.callApiPost(`artist/`,this.artist,(req)=>{
+                delete this.maker['MakerPk'];
+                Api.callApiPost(`maker/`,this.maker,(req)=>{
                     const result = JSON.parse(req.response);
                     const newPk = result.postPk;
-                    window.location.href = document.location.origin + '/interface/artist/' + newPk;
+                    window.location.href = document.location.origin + '/interface/maker/' + newPk;
                 });
             }
         },
         onCancelClick: function() {
             this.revertFieldValues();
         },
+        // ====== FIELDS ========================
         updateObjectFromFields: function() {
-            if (!this.artist)
-                this.artist = {};
+            if (!this.maker)
+                this.maker = {};
 
             for(const index in this.fields) {
                 const field = this.fields[index];
-                this.artist[field.name] = field.postprocessor(field.value);
+                this.maker[field.name] = field.postprocessor(field.value);
             }
         },
         revertFieldValues: function() {
@@ -134,7 +139,7 @@ export default {
         defineFields: function() {
             return [
                 {
-                    name: 'ArtistPk',
+                    name: 'MakerPk',
                     value: '',
                     savedValue: '',
                     placeholder: 'null',
@@ -149,7 +154,7 @@ export default {
                     }
                 },
                 {
-                    name: 'ArtistId',
+                    name: 'MakerId',
                     value: '',
                     savedValue: '',
                     placeholder: 'null',
@@ -166,7 +171,7 @@ export default {
                     }
                 },
                 {
-                    name: 'ArtistName',
+                    name: 'MakerName',
                     value: '',
                     savedValue: '',
                     placeholder: 'null',
@@ -183,7 +188,7 @@ export default {
                     }
                 },
                 {
-                    name: 'ArtistWebsite',
+                    name: 'MakerWebsite',
                     value: '',
                     savedValue: '',
                     placeholder: 'null',
@@ -198,7 +203,7 @@ export default {
                     }
                 },
                 {
-                    name: 'ArtistInstagram',
+                    name: 'MakerInstagram',
                     value: '',
                     savedValue: '',
                     placeholder: 'null',
@@ -213,7 +218,7 @@ export default {
                     }
                 },
                 {
-                    name: 'ArtistReddit',
+                    name: 'MakerReddit',
                     value: '',
                     savedValue: '',
                     placeholder: 'null',
@@ -228,7 +233,7 @@ export default {
                     }
                 },
                 {
-                    name: 'ArtistGeekhack',
+                    name: 'MakerGeekhack',
                     value: '',
                     savedValue: '',
                     placeholder: 'null',

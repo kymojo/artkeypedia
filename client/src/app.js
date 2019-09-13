@@ -5,7 +5,7 @@ import Foo from './page/Foo.vue';
 import Cap from './page/Cap.vue';
 import InterfaceMenu from './page/InterfaceMenu.vue';
 import InterfaceKeycap from './page/InterfaceKeycap.vue';
-import InterfaceArtist from './page/InterfaceArtist.vue';
+import InterfaceMaker from './page/InterfaceMaker.vue';
 
 const pageURL = 'http://localhost:3000';
 
@@ -16,8 +16,8 @@ const routes = [
   { path: '/cap',   component: Cap      },
   { path: '/interface',        component: InterfaceMenu   },
   { path: '/interface/keycap', component: InterfaceKeycap },
-  { path: '/interface/artist', component: InterfaceArtist },
-  { path: '/interface/artist/:pk', component: InterfaceArtist },
+  { path: '/interface/maker', component: InterfaceMaker },
+  { path: '/interface/maker/:pk', component: InterfaceMaker },
   { path: '*',      redirect: '/'       },
   { path: '*/*',    redirect: '/'       },
   { path: '*/*/*',  redirect: '/'       },

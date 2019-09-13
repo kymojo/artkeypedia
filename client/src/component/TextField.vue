@@ -34,7 +34,6 @@ export default {
     name: 'text-field',
     props: [
         'value',
-        'field-type',
         'field-name',
         'placeholder',
         'edit-mode',
