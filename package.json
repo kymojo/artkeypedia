@@ -5,7 +5,8 @@
   "main": "server/server.js",
   "scripts": {
     "build": "webpack --hide-modules --mode=development",
-    "start": "nodemon server/server.js"
+    "start": "nodemon server/server.js",
+    "debug": "nodemon --inspect server/server.js"
   },
   "keywords": [],
   "author": "",

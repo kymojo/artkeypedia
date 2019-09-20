@@ -4,123 +4,111 @@ const schema = {
     // ===================================
     form: [
         {
-            name: 'MakerPk',
-            joiType: Types.INT.required(),
+            name: 'KeycapPk',
             fieldType: 'TextField',
             fieldValues: {
                 placeholder: 'null',
                 readOnly: true,
+                required: true,
             },
         }, {
-            name: 'MakerId',
-            joiType: Types.ID.required(),
+            name: 'KeycapId',
             fieldType: 'TextField',
             fieldValues: {
                 placeholder: 'null',
                 readOnly: false,
+                required: true,
+            },
+        }, {
+            name: 'KeycapName',
+            required: true,
+            fieldType: 'TextField',
+            fieldValues: {
+                placeholder: 'null',
+                readOnly: false,
+                required: true,
+            },
+        }, {
+            name: 'MakerPk',
+            required: true,
+            fieldType: 'TextField',
+            fieldValues: {
+                placeholder: 'null',
+                readOnly: true,
+                required: true,
             },
         }, {
             name: 'MakerName',
-            joiType: Types.Text.required(),
-            fieldType: 'TextField',
+            required: true,
+            fieldType: 'SearchSelect',
             fieldValues: {
                 placeholder: 'null',
                 readOnly: false,
+                required: true,
             },
         }, {
-            name: 'MakerWebsite',
-            joiType: Types.Text.allow(null),
+            name: 'ImagePk',
+            required: false,
             fieldType: 'TextField',
             fieldValues: {
                 placeholder: 'null',
                 readOnly: false,
-            },
-        }, {
-            name: 'MakerInstagram',
-            joiType: Types.Text.allow(null),
-            fieldType: 'TextField',
-            fieldValues: {
-                placeholder: 'null',
-                readOnly: false,
-            },
-        }, {
-            name: 'MakerReddit',
-            joiType: Types.Text.allow(null),
-            fieldType: 'TextField',
-            fieldValues: {
-                placeholder: 'null',
-                readOnly: false,
-            },
-        }, {
-            name: 'MakerGeekhack',
-            joiType: Types.Text.allow(null),
-            fieldType: 'TextField',
-            fieldValues: {
-                placeholder: 'null',
-                readOnly: false,
+                required: true,
             },
         },
     ],
     // ===================================
     GET: [
         {
-            name: 'MakerPk',
+            name: 'KeycapPk',
             joiType: Types.PK.required(),
         },
     ],
     // ===================================
     POST: [
         {
-            name: 'MakerId',
+            name: 'KeycapId',
             joiType: Types.ID.required(),
         }, {
-            name: 'MakerName',
+            name: 'KeycapName',
             joiType: Types.Text.required(),
         }, {
-            name: 'MakerWebsite',
-            joiType: Types.Text.allow(null),
+            name: 'MakerPk',
+            joiType: Types.PK.required(),
         }, {
-            name: 'MakerInstagram',
-            joiType: Types.Text.allow(null),
+            name: 'ImagePk',
+            joiType: Types.PK.allow(null),
         }, {
-            name: 'MakerReddit',
-            joiType: Types.Text.allow(null),
-        }, {
-            name: 'MakerGeekhack',
+            name: 'ImageURL',
             joiType: Types.Text.allow(null),
         },
     ],
     // ===================================
     PUT: [
         {
-            name: 'MakerPk',
-            joiType: Types.INT.required(),
+            name: 'KeycapPk',
+            joiType: Types.PK.required(),
         }, {
-            name: 'MakerId',
+            name: 'KeycapId',
             joiType: Types.ID.required(),
         }, {
-            name: 'MakerName',
+            name: 'KeycapName',
             joiType: Types.Text.required(),
         }, {
-            name: 'MakerWebsite',
-            joiType: Types.Text.allow(null),
+            name: 'MakerPk',
+            joiType: Types.PK.required(),
         }, {
-            name: 'MakerInstagram',
-            joiType: Types.Text.allow(null),
-        }, {
-            name: 'MakerReddit',
-            joiType: Types.Text.allow(null),
-        }, {
-            name: 'MakerGeekhack',
-            joiType: Types.Text.allow(null),
+            name: 'ImagePk',
+            joiType: Types.PK.allow(null),
         },
     ],
     // ===================================
     DELETE: [
         {
-            name: 'MakerPk',
-            joiType: Types.INT.required(),
+            name: 'KeycapPk',
+            joiType: Types.PK.required(),
         },
     ],
+
 };
 module.exports = schema;

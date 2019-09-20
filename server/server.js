@@ -7,13 +7,9 @@ const express = require('express');
 const history = require('connect-history-api-fallback-exclusions');
 const cors = require('cors');
 
-const dbHelper = require('./dbHelper.js');
-
 // =========================================
 // Set up express app
 // -----------------------------------------
-
-// Set express app
 const app = express();
 app.use(express.json()); // allow JSON parsing
 app.use(history({
@@ -24,11 +20,26 @@ app.use(history({
 }));
 app.use(cors()); // for file uploading
 
+// =========================================
+// Launch Server
+// -----------------------------------------
+
 // Set port using PORT environment variable
 // (eg. using command: set PORT=1337)
 // if not set, default to port 3000
 const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Listening on port ${port}`));
+app.listen(port, () => {
+    console.log();
+    console.log('Server successfully launched!');
+    console.log(`Listening on port ${port}...`);
+    console.log();
+});
+
+// =========================================
+// Establish MySQL db connection
+// -----------------------------------------
+
+require('./dbConnection');
 
 // =========================================
 // Use public folder
@@ -39,43 +50,12 @@ app.use(express.static(path.join(__dirname, '../client/public')));
 // =========================================
 // API
 // -----------------------------------------
+
+// Check this: http://stayregular.net/blog/make-a-nodejs-api-with-mysql
+// And this: https://stackoverflow.com/a/37385963
+
 const Joi = require('joi');
-
-// -----------------------------------------
-// Define MySQL and custom Joi types (for convenience)
-
-const JoiMySQL = {
-    INT: Joi.number().integer().max(2147483647).min(-2147483648),
-    INT_UNSIGNED: Joi.number().integer().max(4294967295).min(0),
-};
-
-const JoiCustom = {
-    PK: JoiMySQL.INT,
-    ID: Joi.string().max(20),
-    Text: Joi.string().max(45)
-};
-
-// ------------------------------------------
-// Define Tables
-
-const MakerTable = {
-
-    schema: {
-        MakerPk: /*        */ JoiCustom.PK,
-        MakerId: /*        */ JoiCustom.ID,
-        MakerName: /*      */ JoiCustom.Text,
-        MakerWebsite: /*   */ JoiCustom.Text.allow(null),
-        MakerInstagram: /* */ JoiCustom.Text.allow(null),
-        MakerReddit: /*    */ JoiCustom.Text.allow(null),
-        MakerGeekhack: /*  */ JoiCustom.Text.allow(null),
-        ImagePk: /*         */ JoiCustom.Text.allow(null),
-        ImageURL: /*        */ JoiCustom.Text.allow(null)
-    }
-
-};
-
-// -------------------------------------------
-// API Helpers
+const dbHelper = require('./dbHelper.js');
 
 const ApiCode = {
     BAD_PARAM: 400, // Invalid request syntax
@@ -89,71 +69,50 @@ const ApiCode = {
 }
 
 function sendStatus(res, code, message) {
+    console.log('HTTP STATUS ' + code);
+    console.log("'" + message + "'");
+    console.log();
     return res.status(code).send(message);
 }
 
-// -------------------------------------------
-// Validation Helper Functions
-
-function validateObject(obj, schema) {
-    return Joi.validate(obj, schema);
+function validateValues(schema, values) {
+    let valid;
+    for (index in schema) {
+        const obj = schema[index];
+        valid = Joi.validate(values[obj.name], obj.joiType);
+        if (valid.error)
+            break;
+    }
+    return valid;
 }
 
-function validateMaker(maker) {
-    return validateObject(maker, MakerTable.schema);
-}
+function processGetRequest(req, res, schema, queries) {
 
-function validatePk(pk) {
-    const schema = JoiCustom.PK.required();
-    return Joi.validate(pk, schema);
-}
-
-// -------------------------------------------
-
-function getParam(req, paramString) {
-    return req.params[paramString];
-}
-
-// -------------------------------------------
-// GET
-
-app.get('/api/maker/:pk', (req, res) => {
-
-    const pk = getParam(req, 'pk');
-
-    console.log(`Attempting to GET maker with Pk ${pk}...`);
+    console.log("Server received GET request...");
+    console.log('Parameters: ' + JSON.stringify(req.params));
     console.log();
 
-    if (validatePk(pk).error) {
-        console.log('Invalid GET param.');
+    if (validateValues(schema, req.params).error) {
+        console.log('Invalid GET param(s)!');
         console.log();
         return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid syntax!');
     }
 
-    const queries = [];
-
-    queries.push(dbHelper.newQuery(`
-            SELECT
-                a.MakerPk,
-                a.MakerId,
-                a.MakerName, 
-                a.MakerWebsite,
-                a.MakerInstagram,
-                a.MakerReddit,
-                a.MakerGeekhack,
-                i.ImagePk,
-                i.ImageURL
-            FROM caps.a_maker a
-            LEFT JOIN caps.a_image i
-                ON a.ImagePk = i.ImagePk
-            WHERE a.MakerPk = @pk;
-        `, { pk: pk }));
-
-    console.log('Queries:');
-    console.log(queries);
+    console.log('Parameters successfully validated.');
     console.log();
 
-    dbHelper.queryDatabase(queries, false,
+    console.log('Preparing queries...');
+    console.log();
+
+    const queriesArray = [];
+    for (index in queries)
+        queriesArray.push(dbHelper.newQuery(queries[index], req.params));
+
+    console.log('Queries:');
+    console.log(dbHelper.getQueryLogString(queriesArray));
+    console.log();
+
+    dbHelper.queryDatabase(queriesArray, false,
         (result) => {
             console.log('Results:');
             console.log(result);
@@ -162,123 +121,101 @@ app.get('/api/maker/:pk', (req, res) => {
             const rows = result ? result[0] : [];
 
             if (rows.length == 0) {
-                console.log(`Could not find a maker with Pk ${pk}`);
-                console.log();
-                return sendStatus(res, ApiCode.NOT_FOUND, `Could not find maker record!`);
+                return sendStatus(res, ApiCode.NOT_FOUND, `No records found!`);
             }
 
             res.send(rows);
+            console.log('HTTP STATUS ' + res.statusCode);
+            console.log("'Success'");
+            console.log();
         },
         (err) => {
             console.log(err.message);
             console.log();
             return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
-        });
-});
+        }
+    );
+}
 
-app.post('/api/maker/', (req, res) => {
+function processPostRequest(req, res, schema, queries) {
 
-    const maker = req.body;
-
-    console.log("Attempting to POST maker...");
-    console.log(maker);
+    console.log("Server received POST request...");
+    console.log('Posted object: ' + JSON.stringify(req.body));
     console.log();
 
-    if (validateMaker(maker).error) {
-        console.log('Maker object is invalid.');
+    if (validateValues(schema, req.body).error) {
+        console.log('Object failed schema validation!');
         console.log();
-        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
+        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object structure!');
     }
 
-    const queries = [];
+    console.log('Object successfully validated.');
+    console.log();
 
-    queries.push(dbHelper.newQuery(`
-        INSERT INTO caps.a_maker (
-            MakerId, MakerName, MakerWebsite,
-            MakerInstagram, MakerReddit,
-            MakerGeekhack)
-        VALUES (
-            @id, @name, @website,
-            @insta, @reddit,
-            @geekhack
-        );
-    `, {
-            id: maker.MakerId,
-            name: maker.MakerName,
-            website: maker.MakerWebsite,
-            insta: maker.MakerInstagram,
-            reddit: maker.MakerReddit,
-            geekhack: maker.MakerGeekhack
-        }
-    ));
+    console.log('Preparing queries...');
+    console.log();
 
-    if (maker.ImageUrl) {
-
-        queries.push(dbHelper.newQuery(`
-            INSERT INTO caps.a_image (ImageURL)
-            VALUES (@url);
-        `, { url: maker.ImageURL }));
-    }
+    const queriesArray = [];
+    for (index in queries)
+        queriesArray.push(dbHelper.newQuery(queries[index], req.params));
 
     console.log('Queries:');
-    console.log(queries);
+    console.log(dbHelper.getQueryLogString(queriesArray));
     console.log();
 
-    dbHelper.queryDatabase(queries, true,
+    dbHelper.queryDatabase(queriesArray, true,
         (result) => {
             console.log('Results:');
             console.log(result);
             console.log();
 
             res.send(!result ? result : { postPk: result[0].insertId });
+
+            console.log('HTTP STATUS ' + res.statusCode);
+            console.log("'Success'");
+            console.log();
         },
         (err) => {
             console.log(err.message);
             console.log();
             return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
-        });
-});
-
-app.put('/api/maker/', (req, res) => {
-
-    const maker = req.body;
-
-    console.log(`Attempting to PUT maker with Pk ${maker.MakerPk}...`);
-    console.log(maker);
-    console.log();
-
-    if (validateMaker(maker).error) {
-        console.log('Maker object is invalid.');
-        console.log();
-        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object schema!');
-    }
-
-    const findQuery = dbHelper.newQuery(`
-        SELECT * FROM caps.a_maker
-        WHERE MakerPk = @pk;
-    `, { pk: maker.MakerPk });
-
-    const updateQuery = dbHelper.newQuery(`
-        UPDATE caps.a_maker
-        SET MakerId = @id,
-            MakerName = @name,
-            MakerWebsite = @website,
-            MakerInstagram = @insta,
-            MakerReddit = @reddit,
-            MakerGeekhack = @geekhack
-        WHERE MakerPk = @pk;
-    `, {
-            pk: maker.MakerPk,
-            id: maker.MakerId,
-            name: maker.MakerName,
-            website: maker.MakerWebsite,
-            insta: maker.MakerInstagram,
-            reddit: maker.MakerReddit,
-            geekhack: maker.MakerGeekhack
         }
     );
+}
 
-    dbHelper.queryDatabase(findQuery, false,
+function processPutRequest(req, res, schema, findQuery, updateQueries) {
+
+    console.log("Server received PUT request...");
+    console.log('Received object: ' + JSON.stringify(req.body));
+    console.log();
+
+    if (validateValues(schema, req.body).error) {
+        console.log('Object failed schema validation!');
+        console.log();
+        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object structure!');
+    }
+
+    console.log('Object successfully validated.');
+    console.log();
+
+    console.log('Preparing queries...');
+    console.log();
+
+    const findQueryObj = dbHelper.newQuery(findQuery, req.params);
+
+    const queries = [];
+    for (index in updateQueries)
+        queries.push(dbHelper.newQuery(updateQueries[index], req.params));
+
+    console.log('Search Query:');
+    console.log(dbHelper.getQueryLogString(findQueryObj));
+    console.log();
+
+    console.log('Update Queries:');
+    console.log(dbHelper.getQueryLogString(updateQueries));
+    console.log();
+
+    dbHelper.queryDatabase(findQueryObj, false,
         (result) => {
 
             console.log(`Search Results: `);
@@ -286,25 +223,31 @@ app.put('/api/maker/', (req, res) => {
             console.log();
 
             if (result[0].length > 0)
-                dbHelper.queryDatabase(updateQuery, false,
+                dbHelper.queryDatabase(queries, true,
                     (results) => {
 
                         console.log(`Update Results: `);
                         console.log(results);
                         console.log();
 
-                        res.send('Successfully updated maker record!');
+                        let successMsg = 'Successfully updated the record!';
+                        res.send(successMsg);
+                        console.log(successMsg);
+                        console.log();
 
+                        console.log('HTTP STATUS ' + res.statusCode);
+                        console.log("'Success'");
+                        console.log();
                     }, (err) => {
                         console.log(err.message);
                         return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
                     }
                 );
             else {
-                console.log(`Could not locate maker with Pk ${maker.MakerPk} for update...`);
+                console.log(`Could not locate record for updating.`);
                 console.log();
 
-                return sendStatus(res, ApiCode.NOT_FOUND, 'Could not find maker record!');
+                return sendStatus(res, ApiCode.NOT_FOUND, 'Record could not be found!');
             }
         },
         (err) => {
@@ -312,29 +255,41 @@ app.put('/api/maker/', (req, res) => {
             console.log();
             return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
         });
-});
+}
 
-app.delete('/api/maker/:pk', (req, res) => {
+function processDeleteRequest(req, res, schema, findQuery, deleteQueries) {
 
-    const pk = getParam(req, 'pk');
-
-    if (validatePk(pk).error)
-        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid syntax!');
-
-    console.log(`Attempting to DELETE maker with Pk ${pk}...`);
+    console.log("Server received DELETE request...");
+    console.log('Parameters: ' + JSON.stringify(req.params));
     console.log();
 
-    const findQuery = dbHelper.newQuery(`
-        SELECT * FROM caps.a_maker
-        WHERE MakerPk = @pk;
-    `, { pk: pk });
+    if (validateValues(schema, req.params).error) {
+        console.log('Object failed schema validation!');
+        console.log();
+        return sendStatus(res, ApiCode.BAD_PARAM, 'Invalid object structure!');
+    }
 
-    const updateQuery = dbHelper.newQuery(`
-        DELETE FROM caps.a_maker
-        WHERE MakerPk = @pk;
-    `, { pk: pk });
+    console.log('Object successfully validated.');
+    console.log();
 
-    dbHelper.queryDatabase(findQuery, false,
+    console.log('Preparing queries...');
+    console.log();
+
+    const findQueryObj = dbHelper.newQuery(findQuery, req.params);
+
+    const queries = [];
+    for (index in deleteQueries)
+        queries.push(dbHelper.newQuery(queries[index], req.params));
+
+    console.log('Search Query:');
+    console.log(dbHelper.getQueryLogString(findQueryObj));
+    console.log();
+
+    console.log('Delete Queries:');
+    console.log(dbHelper.getQueryLogString(queries));
+    console.log();
+
+    dbHelper.queryDatabase(findQueryObj, false,
         (result) => {
 
             console.log(`Search Results: `);
@@ -342,26 +297,31 @@ app.delete('/api/maker/:pk', (req, res) => {
             console.log();
 
             if (result[0].length > 0)
-                dbHelper.queryDatabase(updateQuery, false,
+                dbHelper.queryDatabase(queriesArray, true,
                     (results) => {
 
                         console.log(`Delete Results: `);
                         console.log(results);
                         console.log();
 
-                        res.send('Successfully updated maker record!');
+                        let successMsg = 'Successfully deleted the record!';
+                        res.send(successMsg);
+                        console.log(successMsg);
+                        console.log();
 
+                        console.log('HTTP STATUS ' + res.statusCode);
+                        console.log("'Success'");
+                        console.log();
                     }, (err) => {
                         console.log(err.message);
-                        console.log();
                         return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
                     }
                 );
             else {
-                console.log(`Could not locate maker with Pk ${maker.MakerPk} for delete...`);
+                console.log(`Could not locate record for deleting.`);
                 console.log();
 
-                return sendStatus(res, ApiCode.NOT_FOUND, 'Could not find maker record!');
+                return sendStatus(res, ApiCode.NOT_FOUND, 'Record could not be found!');
             }
         },
         (err) => {
@@ -369,6 +329,202 @@ app.delete('/api/maker/:pk', (req, res) => {
             console.log();
             return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
         });
+}
+
+// -------------------------------------------
+// GET
+
+const keycapApi = require('./keycapApi.js');
+app.get('/api/dooky', keycapApi.get);
+
+const KeycapSchema = require('../client/src/schema/keycap.js');
+
+app.get('/api/keycap/:KeycapPk', (req, res) => {
+
+    const queries = [];
+    queries.push(`
+        SELECT
+            k.KeycapPk,
+            k.KeycapId,
+            k.KeycapName,
+            m.MakerPk,
+            m.MakerName,
+            i.ImagePk 
+        FROM caps.a_keycap k
+        LEFT JOIN caps.a_maker m ON k.MakerPk = m.MakerPk
+        LEFT JOIN caps.a_image i ON k.ImagePk = i.ImagePk
+        WHERE k.KeycapPk = @KeycapPk;
+    `);
+    processGetRequest(req, res, KeycapSchema.GET, queries);
+});
+
+function validateParams(req, schema) {
+
+    let obj = {};
+    Object.assign(obj, req.body);
+    Object.assign(obj, req.params);
+
+    console.log('Server received HTTP ' + req.method + ' request...');
+    console.log('Posted value(s): ' + JSON.stringify(obj));
+    console.log();
+
+    if (validateValues(schema, obj).error) {
+        console.log('Value(s) failed schema validation!');
+        console.log();
+        return { error: sendStatus(res, ApiCode.BAD_PARAM, 'Invalid request syntax!') };
+    }
+
+    console.log('Value(s) successfully validated.');
+    console.log();
+    return { params: obj };
+}
+
+function returnResultRows(res, result) {
+    console.log('Results:');
+    console.log(result.rows);
+    console.log();
+
+    res.send(result.rows);
+
+    console.log('HTTP STATUS ' + res.statusCode);
+    console.log("'Success'");
+    console.log();
+}
+
+function returnErrorStatus(res, err) {
+    console.log(err.message);
+    console.log();
+    return sendStatus(res, ApiCode.SRV_ERROR, 'An error occurred.');
+}
+
+const Helper = require('./dbHelper_new.js');
+app.get('/api/keycap/:KeycapPk/:Foo', (req, res) => {
+
+    const valid = validateParams(req, KeycapSchema.GET);
+    if (valid.error) return valid.error;
+
+    Helper.runQueries(null, true, (conn) => {
+
+        let result = Helper.newQuery(conn, `
+            SELECT
+                k.KeycapPk,
+                k.KeycapId,
+                k.KeycapName,
+                m.MakerPk,
+                m.MakerName,
+                i.ImagePk 
+            FROM caps.a_keycap k
+            LEFT JOIN caps.a_maker m ON k.MakerPk = m.MakerPk
+            LEFT JOIN caps.a_image i ON k.ImagePk = i.ImagePk
+            WHERE k.KeycapPk = @KeycapPk;
+        `).run(valid.params);
+
+        return returnResultRows(res, result);
+
+    }, (err) => {
+        return returnErrorStatus(res, err);
+    });
+
+    // queries.push(`
+    //     SELECT
+    //         k.KeycapPk,
+    //         k.KeycapId,
+    //         k.KeycapName,
+    //         m.MakerPk,
+    //         m.MakerName,
+    //         i.ImagePk 
+    //     FROM caps.a_keycap k
+    //     LEFT JOIN caps.a_maker m ON k.MakerPk = m.MakerPk
+    //     LEFT JOIN caps.a_image i ON k.ImagePk = i.ImagePk
+    //     WHERE k.KeycapPk = @KeycapPk;
+    // `);
+    // processGetRequest(req, res, KeycapSchema.GET, queries);
+});
+
+
+
+const MakerSchema = require('../client/src/schema/maker.js');
+
+app.get('/api/maker/:MakerPk', (req, res) => {
+
+    const queries = [];
+    queries.push(`
+        SELECT
+            a.MakerPk,
+            a.MakerId,
+            a.MakerName, 
+            a.MakerWebsite,
+            a.MakerInstagram,
+            a.MakerReddit,
+            a.MakerGeekhack,
+            i.ImagePk,
+            i.ImageURL
+        FROM caps.a_maker a
+        LEFT JOIN caps.a_image i
+            ON a.ImagePk = i.ImagePk
+        WHERE a.MakerPk = @MakerPk;
+    `);
+    processGetRequest(req, res, MakerSchema.GET, queries);
+});
+
+app.post('/api/maker/', (req, res) => {
+
+    let queries = [];
+    queries.push(`
+        SET @imgPk = NULL;
+
+        IF (@ImageURL IS NOT NULL)
+        BEGIN
+            INSERT INTO caps.a_image (ImageURL)
+            VALUES (@ImageURL);
+
+            SET @imgPk = (SELECT MAX(ImagePk) FROM caps.a_image);
+        END
+
+        INSERT INTO caps.a_maker (
+            MakerId, MakerName, MakerWebsite,
+            MakerInstagram, MakerReddit,
+            MakerGeekhack, ImagePk)
+        VALUES (
+            @MakerId, @MakerName, @MakerWebsite,
+            @MakerInstagram, @MakerReddit,
+            @MakerGeekhack, @imgPk
+        );
+    `);
+    processPostRequest(req, res, MakerSchema.POST, queries);
+});
+
+app.put('/api/maker/', (req, res) => {
+
+    const findQuery = `
+        SELECT * FROM caps.a_maker
+        WHERE MakerPk = @MakerPk;
+    `;
+    const updateQuery = `
+        UPDATE caps.a_maker
+        SET MakerId = @MakerId,
+            MakerName = @MakerName,
+            MakerWebsite = @MakerWebsite,
+            MakerInstagram = @MakerInstagram,
+            MakerReddit = @MakerReddit,
+            MakerGeekhack = @MakerGeekhack
+        WHERE MakerPk = @MakerPk;
+    `;
+    processPutRequest(req, res, MakerSchema.PUT, findQuery, updateQuery);
+});
+
+app.delete('/api/maker/:MakerPk', (req, res) => {
+
+    const findQuery = `
+        SELECT * FROM caps.a_maker
+        WHERE MakerPk = @MakerPk;
+    `;
+
+    const updateQuery = `
+        DELETE FROM caps.a_maker
+        WHERE MakerPk = @MakerPk;
+    `;
+    processDeleteRequest(req, res, MakerSchema.DELETE, findQuery, deleteQuery);
 });
 
 // -------------------------------------------
@@ -378,23 +534,23 @@ app.delete('/api/maker/:pk', (req, res) => {
 
 const multer = require('multer');
 
-app.use((err,req,res,next)=>{
+app.use((err, req, res, next) => {
     if (err.code === "INCORRECT_FILETYPE") {
-        return sendStatus(res, ApiCode.NOPE_FILE,'Invalid file type');
+        return sendStatus(res, ApiCode.NOPE_FILE, 'Invalid file type');
     }
     if (err.code === "LIMIT_FILE_SIZE") {
-        return sendStatus(res, ApiCode.NOPE_FILE,'Invalid file size');
+        return sendStatus(res, ApiCode.NOPE_FILE, 'Invalid file size');
     }
 });
 
-const fileFilter = (req,file,cb) => {
-    const allowedTypes = ['image/jpeg','image/jpg','image/png'];
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
     if (!allowedTypes.includes(file.mimetype)) {
         const error = new Error('Incorrect file');
         error.code = "INCORRECT_FILETYPE";
         return cb(error, false);
     }
-    cb(null,true);
+    cb(null, true);
 };
 
 const upload = multer({
@@ -405,6 +561,6 @@ const upload = multer({
     }
 });
 
-app.post('/upload', upload.single('file'), (req,res)=>{
-    res.json({file: req.file});
+app.post('/upload', upload.single('file'), (req, res) => {
+    res.json({ file: req.file });
 });

@@ -64,7 +64,9 @@ const dbHelper = {
                 console.error('Failed to connect to database');
                 return;
             }
-            console.log('Connected as id: ' + connection.threadId);
+            console.log('Db connection id:' + connection.threadId + ' successfully established!');
+            console.log('Now querying database...');
+            console.log();
         });
         return connection;
     },
@@ -126,6 +128,19 @@ const dbHelper = {
             connection.end();
         });
     },
+
+    getQueryLogString: function (queries) {
+
+        let queryStrings = [];
+        for(index in queries) {
+            let query = queries[index];
+            let queryString = query.query;
+            for(param in query.params)
+                queryString = queryString.replace('@'+param,query.params[param]);
+            queryStrings.push(queryString.split('\n'));
+        }
+        return queryStrings;
+    }
 
 }
 module.exports = dbHelper;

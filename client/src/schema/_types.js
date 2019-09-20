@@ -1,4 +1,4 @@
-import Joi from 'joi';
+const Joi = require('joi');
 
 // Idea: https://rangle.io/blog/how-to-create-data-driven-user-interfaces-in-vue/
 
@@ -15,7 +15,7 @@ const Text = Joi.string().max(45);
 
 // ##################################################################
 
-export default {
+const types = {
 
     INT: INT,
     INT_UNSIGNED: INT_UNSIGNED,
@@ -25,5 +25,6 @@ export default {
     Text: Text
 
 }
+module.exports = types;
 
 // ##################################################################
