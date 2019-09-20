@@ -88,7 +88,13 @@ const schema = {
         }, {
             name: 'MakerGeekhack',
             joiType: Types.Text.allow(null),
-        },
+        }, {
+            name: 'ImagePk',
+            joiType: Types.PK.allow(null),
+        }, {
+            name: 'ImageUrl',
+            joiType: Types.Text.allow(null),
+        }
     ],
     // ===================================
     PUT: [

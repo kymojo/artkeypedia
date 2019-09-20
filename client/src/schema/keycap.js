@@ -79,7 +79,7 @@ const schema = {
             name: 'ImagePk',
             joiType: Types.PK.allow(null),
         }, {
-            name: 'ImageURL',
+            name: 'ImageUrl',
             joiType: Types.Text.allow(null),
         },
     ],

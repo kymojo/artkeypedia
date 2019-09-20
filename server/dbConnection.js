@@ -27,6 +27,16 @@ function establishDbConnection() {
         console.log();
     });
 
+    connection.config.queryFormat = function (query, values) {
+        if (!values) return query;
+        return query.replace(/@(\w+)/g, function (txt, key) {
+            if (values.hasOwnProperty(key)) {
+                return this.escape(values[key]);
+            }
+            return txt;
+        }.bind(this));
+    };
+
     // TODO: If you're also serving http, display a 503 error.
     connection.on('error', function onError(err) {
         console.log('A database error occurred');

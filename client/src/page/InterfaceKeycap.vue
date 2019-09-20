@@ -12,7 +12,7 @@
 </template>
 <!--####################################################-->
 <script>
-import KeycapSchema from '../schema/keycap';
+import KeycapSchema from '../schema/keycap.js';
 import Axios from 'axios';
 
 export default {
