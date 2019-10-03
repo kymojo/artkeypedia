@@ -71,9 +71,9 @@ const apiHelper = {
     },
 
     /**
-     * 
-     * @param {*} schema 
-     * @param {*} values 
+     * Compare a Joi schema object with an object with corresponding fields. Returns true if valid; else, false.
+     * @param {*} schema Joi schema object
+     * @param {*} values object to validate
      */
     validateValues: function (schema, values) {
         let valid = true;
@@ -86,15 +86,27 @@ const apiHelper = {
         return valid;
     },
 
+    /**
+     * Retrieve values object from HTTP body, route params, and query string
+     * @param {*} req Express request object
+     */
     getPassedValues: function (req) {
         let obj = {};
         Object.assign(obj, req.body);
         Object.assign(obj, req.params);
+        Object.assign(obj, req.query);
         return obj;
     },
 
     //##########################################################
 
+    /**
+     * The encasing function call for API db requests. All "runApi*" functions should run inside this function.
+     * @param {*} req Express request object
+     * @param {*} res Express response object
+     * @param {*} schema Joi schema object
+     * @param {*} next next function to run; (api)=>{}
+     */
     runApiWrapper: function (req, res, schema, next) {
 
         const params = this.getPassedValues(req);
@@ -123,6 +135,13 @@ const apiHelper = {
         next(api);
     },
 
+    /**
+     * Run a MySQL query using the ApiHelper
+     * Note: must be run inside runApiWrapper() or a subsequent nested call
+     * @param {*} query string of query to run
+     * @param {*} api API helper object (created in runApiWrapper)
+     * @param {*} next next function to run; (api,result)=>{}
+     */
     runApiQuery: function (query, api, next) {
 
         this.quickLog(['Query:', this.getQueryLogString([query], api.params)]);
@@ -136,7 +155,16 @@ const apiHelper = {
 
     },
 
+    /**
+     * Begin a transaction using the ApiHelper
+     * @param {*} api API helper object (created in runApiWrapper)
+     * @param {*} next next function to run; (api)=>{}
+     */
     runApiTransaction: function (api, next) {
+
+        // NOTE: transactions need not be nested
+        if (api.transaction)
+            next(api);
 
         api.transaction = true;
 
@@ -148,6 +176,11 @@ const apiHelper = {
         });
     },
 
+    /**
+     * Exit the query and return an ERR 500
+     * @param {*} api API helper object (created in runApiWrapper)
+     * @param {*} err error message caught
+     */
     runApiDbError: function (api, err) {
 
         if (api.transaction)
@@ -158,6 +191,9 @@ const apiHelper = {
         return this.sendStatus(api.res, this.ApiCode.SRV_ERROR, 'An error occurred!');
     },
 
+    /**
+     * Close the transaction before continuing to throw error
+     */
     runApiDbErrorTransaction: function () {
 
         return connection.rollback(() => {
@@ -167,6 +203,12 @@ const apiHelper = {
         });
     },
 
+    /**
+     * Exit the query and return some result
+     * @param {*} api API helper object (created in runApiWrapper)
+     * @param {*} result query result object
+     * @param {*} toClient object to return to the client
+     */
     runApiReturn: function (api, result, toClient) {
 
         if (api.transaction) {
@@ -189,11 +231,21 @@ const apiHelper = {
         this.quickLog([`HTTP STATUS ${api.res.statusCode}`, 'Success']);
     },
 
+    /**
+     * Exit the query and return the result object
+     * @param {*} api API helper object (created in runApiWrapper)
+     * @param {*} result query result object
+     */
     runApiReturnResult: function (api, result) {
 
         this.runApiReturn(api, result, result);
     },
 
+    /**
+     * Exit the query and return the resulting rows
+     * @param {*} api API helper object (created in runApiWrapper)
+     * @param {*} result query result object
+     */
     runApiReturnRows: function (api, result) {
 
         this.runApiReturn(api, result, result[0]);

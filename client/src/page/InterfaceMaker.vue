@@ -78,7 +78,7 @@ export default {
             this.loading = true;
             Api.callApiGet(`maker/${pk}`,(req)=>{
                 const data = req.response;
-                this.maker = JSON.parse(data)[0];
+                this.maker = JSON.parse(data);
                 this.loading = false;
                 this.onMakerLoad();
             });

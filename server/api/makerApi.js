@@ -117,6 +117,17 @@ const makerApi = {
             SELECT * FROM caps.a_maker
             WHERE MakerPk = @MakerPk;
         `;
+
+        const INSERT_IMAGE = `
+            INSERT INTO caps.a_image (ImageUrl)
+            VALUES (@ImageUrl);
+        `;
+
+        const GET_IMAGE_PK = `
+            SELECT MAX(ImagePk) ImagePk
+            FROM caps.a_image;
+        `;
+
         const UPDATE_MAKER = `
             UPDATE caps.a_maker
             SET MakerId = @MakerId,
@@ -125,6 +136,7 @@ const makerApi = {
                 MakerInstagram = @MakerInstagram,
                 MakerReddit = @MakerReddit,
                 MakerGeekhack = @MakerGeekhack
+                ImagePk = @ImagePk
             WHERE MakerPk = @MakerPk;
         `;
 
@@ -136,6 +148,34 @@ const makerApi = {
                     return ApiHelper.sendStatus(api.res, ApiHelper.ApiCode.NOT_FOUND, 'Could not locate record for update.');
 
                 api.oldRecord = result[0];
+
+                if (api.params['ImageUrl']) {
+
+                    ApiHelper.runApiTransaction(api, (api) => {
+    
+                        ApiHelper.runApiQuery(INSERT_IMAGE, api, (api, result) => {
+    
+                            ApiHelper.runApiQuery(GET_IMAGE_PK, api, (api, result) => {
+    
+                                api.params['ImagePk'] = result[0]['ImagePk'];
+    
+                                ApiHelper.runApiQuery(UPDATE_MAKER, api, (api, result) => {
+    
+                                    ApiHelper.runApiReturn(api, result, api.oldRecord);
+                                });
+                            });
+                        });
+                    });
+    
+                } else {
+                    ApiHelper.runApiQuery(UPDATE_MAKER, api, (api, result) => {
+    
+                        ApiHelper.runApiReturn(api, result, api.oldRecord);
+                    });
+                }
+
+
+
 
                 ApiHelper.runApiQuery(UPDATE_MAKER, api, (api, result) => {
 

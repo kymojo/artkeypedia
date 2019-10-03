@@ -25,7 +25,7 @@ module.exports = {
     entry: './client/src/app.js',
     module: {
         rules: [
-            { test: /\.js$/, use: 'babel-loader' },
+            { test: /\.js$/, use: 'babel-loader', exclude: [ /joi-browser/ ] },
             { test: /\.vue$/, use: 'vue-loader' },
             { test: /\.css$/, use: ['vue-style-loader', 'css-loader'] },
         ]
@@ -36,7 +36,8 @@ module.exports = {
     },
     resolve: {
         alias: {
-            'vue$': 'vue/dist/vue.esm.js'
+            'vue$': 'vue/dist/vue.esm.js',
+            'joi$': 'joi-browser',
         },
         extensions: ['*', '.js', '.vue', '.json']
     },

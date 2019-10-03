@@ -55,8 +55,8 @@ const keycapApi = require('./api/keycapApi.js');
 app.get('/api/keycap', keycapApi.GET_all);
 app.get('/api/keycap/:KeycapPk', keycapApi.GET);
 app.post('/api/keycap/', keycapApi.POST);
-// app.put('/api/keycap/', keycapApi.PUT);
-// app.delete('/api/keycap/:KeycapPk', keycapApi.DELETE);
+app.put('/api/keycap/', keycapApi.PUT);
+app.delete('/api/keycap/:KeycapPk', keycapApi.DELETE);
 
 const makerApi = require('./api/makerApi.js');
 app.get('/api/maker/:MakerPk',makerApi.GET);
