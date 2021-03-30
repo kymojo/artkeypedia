@@ -1,6 +1,6 @@
 # Artkeypedia
 
-**Project Discontinued**
+**Discontinued** - Repurposed concept
 
 Project intended to create a community-driven database for artisan keycaps, eventually hoping to include other mechanical keyboard parts, too.
 
